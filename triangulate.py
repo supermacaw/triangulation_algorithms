@@ -4,8 +4,6 @@ def get_elim_order_mcsm(nxgraph):
     """ Input: a networkx graph nxgraph
         Output: A minimal elimination ordering of the graph and corresponding triangulated graph
     """
-    
-    
 def lb_triangulate(nxgraph, order):
     """Input: nxgraph, and an ordering on it
        Output: a minimal triangulation of the input graph
@@ -35,17 +33,22 @@ def greedy_triangulate(nxgraph, depth, heuristic):
        Output: fully triangulated version of input nxgraph 
     """
 
-    h = nxgraph.copy()
-    while len(h.nodes()) > 0: 
+    t = nxgraph.copy()
+    triangulation_edges = []
+    while len(t.nodes()) > 0: 
         minCost = float("inf")
         best = None 
-        for node in r: 
-            cost = compute_cost(h, node, depth, heuristic)
-            if cost < minCost:
+        for node in t.nodes(): 
+            cost = compute_cost(t, node, depth, heuristic)
+            if cost <= minCost:
                 minCost = cost
                 best = node
-        remove_and_fill_in(h, r, best)
-    return h 
+        p = remove_and_fill_in(t, best)
+        triangulation_edges.extend(p)
+    
+    result = nxgraph.copy()
+    result.add_edges_from(triangulation_edges)
+    return result
 
 def compute_cost(G, n, depth, heuristic):
     """Input: G, R are nxgraphs, n = node to remove, depth = depth of search
@@ -71,12 +74,12 @@ def compute_cost(G, n, depth, heuristic):
         cost = 0 #NEED TO INSERT SOMETHING HERE, SHOULD BE clique's TABLE_SIZE 
     else:
         print "INVALID HEURISTIC"
-    h = G.copy()
-    remove_and_fill_in(h, n)
-    if depth > 1 and not (len(h.nodes()) == 0):
+    copy = G.copy()
+    remove_and_fill_in(copy, n)
+    if depth > 1 and not (len(copy.nodes()) == 0):
         minCost = float("inf")
-        for node in h.nodes():
-            node_cost = compute_cost(h, node, depth - 1, heuristic)
+        for node in copy.nodes():
+            node_cost = compute_cost(copy, node, depth - 1, heuristic)
             if node_cost < minCost:
                 minCost = node_cost
         cost = cost + minCost
@@ -87,10 +90,13 @@ def compute_cost(G, n, depth, heuristic):
 def remove_and_fill_in(nxgraph, node):
     neighbors = nxgraph.neighbors(node)
     nxgraph.remove_node(node)
+    added_edges = list()
     for node1 in neighbors:
         for node2 in neighbors:
             if node1 != node2 and not nxgraph.has_edge(node2, node1):
                 nxgraph.add_edge(node1, node2)
+                added_edges.append((node1, node2))
+    return added_edges
 
 def count_fill_ins(G, n):
     """Input: nxgraph G, node to remove n 
@@ -111,3 +117,10 @@ def count_fill_ins(G, n):
                 h.add_edge(node1, node2)
                 cost += 1;
     return cost            
+
+def test_triangulation():
+    test_graph = nx.Graph()
+    test_graph.add_nodes_from([1,2,3,4])
+    test_graph.add_edges_from([(1,2),(2,3),(3,4)])
+    a = greedy_triangulate(test_graph, 1, 'fill')
+    print a.edges()
